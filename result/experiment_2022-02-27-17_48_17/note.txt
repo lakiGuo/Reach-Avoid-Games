@@ -1,2 +1,0 @@
-t=15 again
-this is good with iteration=10
