@@ -4,6 +4,7 @@ from scipy.linalg import block_diag
 from solve_lq_game.solve_lq_game import solve_lq_game
 import matplotlib.pyplot as plt
 
+
 class BaseSolver(ABC):
     def __init__(self,
                  dynamics,
@@ -11,7 +12,7 @@ class BaseSolver(ABC):
                  x0,
                  Ps,
                  alphas,
-                 alpha_scaling= 1.0, # 0.01,
+                 alpha_scaling=1.0,  # 0.01,
                  reference_deviation_weight=None,
                  logger=None,
                  visualizer=None,
@@ -42,7 +43,7 @@ class BaseSolver(ABC):
         self.vel_plot = config["args"].vel_plot
         self.ctl_plot = config["args"].ctl_plot
         self.hallucinated = config["args"].hallucinated
-    
+
         self.config = config["args"]
         self._player_costs = player_costs
 
@@ -76,7 +77,7 @@ class BaseSolver(ABC):
 
         if self.alpha_scaling_type == "trust_region":
             self.margin = config["args"].initial_margin
-        
+
         self.cost_converge = config["args"].cost_converge
 
     @abstractmethod
@@ -107,7 +108,7 @@ class BaseSolver(ABC):
         store_total_cost = []
         iteration_store = []
         store_freq = self._store_freq
-        
+
         while not self._is_converged() and (self.max_steps is not None and self.iteration < self.max_steps):
             # # (1) Compute current operating point and update last one.
             if (self._t_react is not None) and self.iteration > 0:  # we are running adversarial
@@ -123,7 +124,7 @@ class BaseSolver(ABC):
                 xs, us = self._compute_operating_point()
                 self._last_operating_point = self._current_operating_point
                 self._current_operating_point = (xs, us)
-            
+
             # (2) Linearize about this operating point. Make sure to
             # stack appropriately since we will concatenate state vectors
             # but not control vectors, so that
@@ -138,7 +139,7 @@ class BaseSolver(ABC):
 
                 for ii in range(self._num_players):
                     Bs[ii].append(B[ii])
-                    
+
             # (5) Quadraticize costs.
             # Get the hessians and gradients. Hess_x (Q) and grad_x (l) are zero besides at t*
             # Hess_u (R) and grad_u (r) are eps * I and eps * u_t, respectfully, for all [0, T]
@@ -153,14 +154,15 @@ class BaseSolver(ABC):
             func_return_array = []
             total_costs = []
             first_t_stars = []
-                        
-            for ii in range(self._num_players):           
-                Q, l, R, r, costss, total_costss, calc_deriv_cost_, func_array_, func_return_array_, value_func_plus_, first_t_star_ = self._TimeStar(xs, us, ii, first_t_star = True)
+
+            for ii in range(self._num_players):
+                Q, l, R, r, costss, total_costss, calc_deriv_cost_, func_array_, func_return_array_, value_func_plus_, first_t_star_ = self._TimeStar(
+                    xs, us, ii, first_t_star=True)
 
                 Qs.append(Q[ii])
                 ls.append(l[ii])
                 rs.append(r[ii])
-                
+
                 costs.append(costss)
                 calc_deriv_cost.append(calc_deriv_cost_)
                 value_func_plus.append(value_func_plus_)
@@ -168,32 +170,34 @@ class BaseSolver(ABC):
                 func_return_array.append(func_return_array_)
                 total_costs.append(total_costss)
                 first_t_stars.append(first_t_star_)
-                
+
                 Rs.append(R[ii])
-            
+
             if self._t_react is not None:
                 # Combine B's for 2nd phase for P1
                 for ii in range(self._t_react, self._horizon, 1):
                     Bs[0][ii] = np.hstack((Bs[0][ii], Bs[1][ii]))
                     Bs[1][ii] = []
-                            
+
                 # Trying to put some things on P1 and empty set on P2 for times
                 # t_react to T
                 for ii in range(self._t_react, self._horizon, 1):
-                    rs[0][ii] = np.hstack((rs[0][ii], rs[1][ii]))  # For grad of cost w.r.t. u (change back to hstack)
+                    # For grad of cost w.r.t. u (change back to hstack)
+                    rs[0][ii] = np.hstack((rs[0][ii], rs[1][ii]))
                     rs[1][ii] = []
-                    
+
                     Rs[0][0][ii] = block_diag(Rs[0][0][ii], Rs[1][0][ii])
                     Rs[0][1][ii] = block_diag(Rs[0][1][ii], Rs[1][1][ii])
                     Rs[1][0][ii] = []
-                    Rs[1][1][ii] = []                
-                                    
-                # Need to stack 'us' for compute_operating_point_other for 2nd phase. 
+                    Rs[1][1][ii] = []
+
+                # Need to stack 'us' for compute_operating_point_other for 2nd phase.
                 # By the time we use it, the Ps and alphas are already stadcked.
                 # This really only needs to be done at iteration 0
                 self._us_other = us
                 for ii in range(self._t_react, self._horizon):
-                    self._us_other[0][ii] = np.vstack((self._us_other[0][ii], self._us_other[1][ii]))
+                    self._us_other[0][ii] = np.vstack(
+                        (self._us_other[0][ii], self._us_other[1][ii]))
                     self._us_other[1][ii] = []
 
             self._first_t_stars = first_t_stars
@@ -216,12 +220,13 @@ class BaseSolver(ABC):
             # print(np.array(Qs).shape)
             # input()
 
-            Ps, alphas, ns = solve_lq_game(As, Bs, Qs, ls, Rs, rs, calc_deriv_cost, self.time_consistency, self._t_react)
+            Ps, alphas, ns = solve_lq_game(
+                As, Bs, Qs, ls, Rs, rs, calc_deriv_cost, self.time_consistency, self._t_react)
 
             # (7) Accumulate total costs for all players.
             # This is the total cost for the trajectory we are on now
             #total_costs = [sum(costis).item() for costis in costs]
-            
+
             if not self.time_consistency:
                 prompt = "\rTotal cost for player:"
                 for i in range(self._num_players):
@@ -229,13 +234,14 @@ class BaseSolver(ABC):
             else:
                 prompt = "\rTotal cost for player:"
                 for i in range(self._num_players):
-                    prompt += "\t{:.3f}".format(max(costs[i]).detach().numpy().flatten()[0])
+                    prompt += "\t{:.3f}".format(
+                        max(costs[i]).detach().numpy().flatten()[0])
             print(prompt, end="")
-            
+
             self._total_costs = total_costs
             self._costs = costs
-            
-            #Store total cost at each iteration and the iterations
+
+            # Store total cost at each iteration and the iterations
             store_total_cost.append(total_costs)
             iteration_store.append(self.iteration)
 
@@ -250,12 +256,14 @@ class BaseSolver(ABC):
                 "ratio": self._trustregion_ratio,
                 "constant_margin": self._trustregion_constant_margin
             }
-            
+
             if self.alpha_scaling_type is not None:
                 if self.alpha_scaling_type == "trust_region":
-                    self._alpha_scaling = trust_region_methods[self.trust_region_type](iteration = self.iteration, visualize_hallucination=self.hallucinated)
+                    self._alpha_scaling = trust_region_methods[self.trust_region_type](
+                        iteration=self.iteration, visualize_hallucination=self.hallucinated)
                 elif self.alpha_scaling_type == "armijo":
-                    self._alpha_scaling = self._linesearch_armijo(iteration = self.iteration, visualize_hallucination=self.hallucinated)
+                    self._alpha_scaling = self._linesearch_armijo(
+                        iteration=self.iteration, visualize_hallucination=self.hallucinated)
                 else:
                     self._alpha_scaling = 0.01
             else:
@@ -264,7 +272,7 @@ class BaseSolver(ABC):
                     self._alpha_scaling = .01
 
             # Log everything.
-            if self._logger is not None and self.log and self.iteration%store_freq == 0:
+            if self._logger is not None and self.log and self.iteration % store_freq == 0:
                 self._logger.log("xs", xs)
                 self._logger.log("us", us)
                 self._logger.log("total_costs", total_costs)
@@ -276,21 +284,24 @@ class BaseSolver(ABC):
                 self._logger.log("first_t_star", first_t_stars)
                 self._logger.log("iteration", self.iteration)
                 self._logger.dump()
-            
+
             self.iteration += 1
 
         if self._is_converged():
             print("\nExperiment converged")
-            plt.figure()
-            plt.plot(iteration_store, store_total_cost, color='green', linestyle='dashed', linewidth = 2, marker='o', markerfacecolor='blue', markersize=6)
-            plt.xlabel('Iteration')
-            plt.ylabel('Total cost')
-            plt.title('Total Cost of Trajectory at Each Iteration')
-            if self.plot:
-                plt.savefig(self.exp_info["figure_dir"] +'total_cost_after_{}_steps.jpg'.format(self.iteration)) # Trying to save these plots
-            if not self.is_batch_run:
-                plt.show()
-            
+            # plt.figure()
+            # plt.plot(iteration_store, store_total_cost, color='green', linestyle='dashed',
+            #          linewidth=2, marker='o', markerfacecolor='blue', markersize=6)
+            # plt.xlabel('Iteration')
+            # plt.ylabel('Total cost')
+            # plt.title('Total Cost of Trajectory at Each Iteration')
+            # if self.plot:
+            #     # Trying to save these plots
+            #     plt.savefig(
+            #         self.exp_info["figure_dir"] + 'total_cost_after_{}_steps.jpg'.format(self.iteration))
+            # if not self.is_batch_run:
+            #     plt.show()
+
             if self._logger is not None and self.log:
                 self._logger.log("xs", xs)
                 self._logger.log("us", us)
@@ -316,7 +327,7 @@ class BaseSolver(ABC):
     @abstractmethod
     def _trustregion_constant_margin(self, **kwargs):
         raise NotImplementedError
-    
+
     @abstractmethod
     def _trustregion_naive(self, **kwargs):
         raise NotImplementedError
@@ -324,7 +335,7 @@ class BaseSolver(ABC):
     @abstractmethod
     def _trustregion_ratio(self, **kwargs):
         raise NotImplementedError
-    
+
     @abstractmethod
     def _linesearch_armijo(self, **kwargs):
         raise NotImplementedError
@@ -348,19 +359,20 @@ class BaseSolver(ABC):
             if self._current_operating_point is not None:
                 current_x = self._current_operating_point[0][k]
                 current_u = [self._current_operating_point[1][ii][k]
-                              for ii in range(self._num_players)]
+                             for ii in range(self._num_players)]
             else:
                 current_x = np.zeros((self._dynamics._x_dim, 1))
                 current_u = [np.zeros((ui_dim, 1))
-                              for ui_dim in self._dynamics._u_dims]
-            
+                             for ui_dim in self._dynamics._u_dims]
+
             # This is Eqn. 7 in the ILQGames paper
             # This gets us the control at time-step k for the updated trajectory
-            feedback = lambda x, u_ref, x_ref, P, alpha : \
-                        u_ref - P @ (x - x_ref) - self._alpha_scaling * alpha
+
+            def feedback(x, u_ref, x_ref, P, alpha): return \
+                u_ref - P @ (x - x_ref) - self._alpha_scaling * alpha
             u = [feedback(xs[k], current_u[ii], current_x,
                           self._Ps[ii][k], self._alphas[ii][k])
-                  for ii in range(self._num_players)]
+                 for ii in range(self._num_players)]
 
             # Append computed control (u) for the trajectory we're calculating to "us"
             for ii in range(self._num_players):
@@ -368,7 +380,7 @@ class BaseSolver(ABC):
 
             # Use 4th order Runge-Kutta to propogate system to next time-step k+1
             xs.append(self._dynamics.integrate(xs[k], u))
-            
+
         #print("self._aplha_scaling in compute_operating_point is: ", self._alpha_scaling)
         return xs, us
 
@@ -383,7 +395,7 @@ class BaseSolver(ABC):
         xs = [self._x0]
         us = [[] for ii in range(self._num_players)]
         #costs = [[] for ii in range(self._num_players)]
-        
+
         for k in range(self._horizon):
             # If this is our fist time through, we don't have a trajectory, so
             # set the state and controls at each time-step k to 0. Else, use state and
@@ -392,22 +404,22 @@ class BaseSolver(ABC):
                 num_players = 2
             else:
                 num_players = 1
-            
+
             current_x = self._current_operating_point[0][k]
             if self.iteration != 0:
                 current_u = [self._current_operating_point[1][ii][k]
-                                  for ii in range(num_players)]
+                             for ii in range(num_players)]
             else:
                 current_u = [self._us_other[ii][k]
-                                  for ii in range(num_players)]
+                             for ii in range(num_players)]
 
             # This is Eqn. 7 in the ILQGames paper
             # This gets us the control at time-step k for the updated trajectory
-            feedback = lambda x, u_ref, x_ref, P, alpha, alpha_scaling : \
-                       u_ref - P @ (x - x_ref) - alpha_scaling * alpha
+            def feedback(x, u_ref, x_ref, P, alpha, alpha_scaling): return \
+                u_ref - P @ (x - x_ref) - alpha_scaling * alpha
             u = [feedback(xs[k], current_u[ii], current_x,
-                      self._Ps[ii][k], self._alphas[ii][k], self._alpha_scaling)   # Adding self._alpha_scaling to this (since now we have 2 players with 2 different alpha_scaling)
-                 for ii in range(num_players)]       
+                          self._Ps[ii][k], self._alphas[ii][k], self._alpha_scaling)   # Adding self._alpha_scaling to this (since now we have 2 players with 2 different alpha_scaling)
+                 for ii in range(num_players)]
 
             # Append computed control (u) for the trajectory we're calculating to "us"
             for ii in range(num_players):
@@ -434,7 +446,7 @@ class BaseSolver(ABC):
         plot_car_for_critical_points = False
 
         if self._visualizer is not None:
-            traj = {"xs" : xs}
+            traj = {"xs": xs}
             for ii in range(self._num_players):
                 traj["u%ds" % (ii + 1)] = us[ii]
 
@@ -452,8 +464,10 @@ class BaseSolver(ABC):
                 for i in range(self._num_players):
                     if not self.time_consistency:
                         pinch_point_index = calc_deriv_cost[i].index("True")
-                    g_critical_index = np.where(np.array(func_array[i]) == "g_x")[0]
-                    l_critical_index = np.where(np.array(func_array[i]) == "l_x")[0]
+                    g_critical_index = np.where(
+                        np.array(func_array[i]) == "g_x")[0]
+                    l_critical_index = np.where(
+                        np.array(func_array[i]) == "l_x")[0]
 
                     g_critical_index_pos = []
                     g_critical_index_neg = []
@@ -462,7 +476,7 @@ class BaseSolver(ABC):
                             g_critical_index_pos.append(index)
                         else:
                             g_critical_index_neg.append(index)
-                    
+
                     l_critical_index_pos = []
                     l_critical_index_neg = []
                     for index in l_critical_index:
@@ -473,53 +487,74 @@ class BaseSolver(ABC):
 
                     self._visualizer.draw_real_car(i, np.array(xs)[[0]])
                     if plot_car_for_critical_points:
-                        self._visualizer.draw_real_car(i, np.array(xs)[g_critical_index])
-                        self._visualizer.draw_real_car(i, np.array(xs)[l_critical_index])
+                        self._visualizer.draw_real_car(
+                            i, np.array(xs)[g_critical_index])
+                        self._visualizer.draw_real_car(
+                            i, np.array(xs)[l_critical_index])
                     else:
                         plt.figure(1)
                         if not self.time_consistency:
                             if func_array[i][pinch_point_index] == "g_x":
-                                plt.scatter(np.array(xs)[pinch_point_index, 5*i], np.array(xs)[pinch_point_index, 5*i + 1], color="r", s=40, marker="*", zorder=20)
+                                plt.scatter(np.array(xs)[pinch_point_index, 5*i], np.array(
+                                    xs)[pinch_point_index, 5*i + 1], color="r", s=40, marker="*", zorder=20)
                             else:
-                                plt.scatter(np.array(xs)[pinch_point_index, 5*i], np.array(xs)[pinch_point_index, 5*i + 1], color="r", s=40, marker="o", zorder=20)
+                                plt.scatter(np.array(xs)[pinch_point_index, 5*i], np.array(
+                                    xs)[pinch_point_index, 5*i + 1], color="r", s=40, marker="o", zorder=20)
                         else:
-                            plt.scatter(np.array(xs)[g_critical_index, 5*i], np.array(xs)[g_critical_index, 5*i + 1], color="k", s=40, marker="*", zorder=20)
-                            plt.scatter(np.array(xs)[l_critical_index, 5*i], np.array(xs)[l_critical_index, 5*i + 1], color="magenta", s=20, marker="o", zorder=20)
-                        
-                        plt.scatter(np.array(xs)[g_critical_index_pos, 5*i], np.array(xs)[g_critical_index_pos, 5*i + 1], color="k", s=40, marker="*", zorder=10)
-                        plt.scatter(np.array(xs)[l_critical_index_pos, 5*i], np.array(xs)[l_critical_index_pos, 5*i + 1], color="magenta", s=20, marker="o", zorder=10)
-                        plt.scatter(np.array(xs)[g_critical_index_neg, 5*i], np.array(xs)[g_critical_index_neg, 5*i + 1], color="y", s=40, marker="*", zorder=10)
-                        plt.scatter(np.array(xs)[l_critical_index_neg, 5*i], np.array(xs)[l_critical_index_neg, 5*i + 1], color="y", s=20, marker="o", zorder=10)
-            
+                            plt.scatter(np.array(xs)[g_critical_index, 5*i], np.array(
+                                xs)[g_critical_index, 5*i + 1], color="k", s=40, marker="*", zorder=20)
+                            plt.scatter(np.array(xs)[l_critical_index, 5*i], np.array(
+                                xs)[l_critical_index, 5*i + 1], color="magenta", s=20, marker="o", zorder=20)
+
+                        plt.scatter(np.array(xs)[g_critical_index_pos, 5*i], np.array(
+                            xs)[g_critical_index_pos, 5*i + 1], color="k", s=40, marker="*", zorder=10)
+                        plt.scatter(np.array(xs)[l_critical_index_pos, 5*i], np.array(xs)[
+                                    l_critical_index_pos, 5*i + 1], color="magenta", s=20, marker="o", zorder=10)
+                        plt.scatter(np.array(xs)[g_critical_index_neg, 5*i], np.array(
+                            xs)[g_critical_index_neg, 5*i + 1], color="y", s=40, marker="*", zorder=10)
+                        plt.scatter(np.array(xs)[l_critical_index_neg, 5*i], np.array(
+                            xs)[l_critical_index_neg, 5*i + 1], color="y", s=20, marker="o", zorder=10)
+
             plt.pause(0.001)
             if self.plot:
-                plt.savefig(self.exp_info["figure_dir"] +'plot-{}.jpg'.format(self.iteration)) # Trying to save these plots
+                # Trying to save these plots
+                plt.savefig(self.exp_info["figure_dir"] +
+                            'plot-{}.jpg'.format(self.iteration))
             plt.clf()
 
         # draw velocity and timestar overlay graph for 2 cars
         if self.vel_plot:
             for i in range(self._num_players):
-                g_critical_index = np.where(np.array(func_array[i]) == "g_x")[0]
-                l_critical_index = np.where(np.array(func_array[i]) == "l_x")[0]
-                value_critical_index = np.where(np.array(func_array[i]) == "value")[0]
-                gradient_critical_index = np.where(np.array(func_array[i]) != "value")[0]
+                g_critical_index = np.where(
+                    np.array(func_array[i]) == "g_x")[0]
+                l_critical_index = np.where(
+                    np.array(func_array[i]) == "l_x")[0]
+                value_critical_index = np.where(
+                    np.array(func_array[i]) == "value")[0]
+                gradient_critical_index = np.where(
+                    np.array(func_array[i]) != "value")[0]
                 plt.figure(4+i)
                 vel_array = np.array([x[5*i + 4] for x in xs]).flatten()
-                
+
                 plt.plot(vel_array)
-                plt.scatter(g_critical_index, vel_array[g_critical_index], color = "r")
-                plt.scatter(l_critical_index, vel_array[l_critical_index], color = "g")
-                plt.scatter(value_critical_index, vel_array[value_critical_index], color = "y")
+                plt.scatter(g_critical_index,
+                            vel_array[g_critical_index], color="r")
+                plt.scatter(l_critical_index,
+                            vel_array[l_critical_index], color="g")
+                plt.scatter(value_critical_index,
+                            vel_array[value_critical_index], color="y")
 
                 name_list = []
                 try:
                     for func in np.array(func_return_array[i])[gradient_critical_index]:
                         try:
-                            name_list.append(func.__name__.replace("_",""))
+                            name_list.append(func.__name__.replace("_", ""))
                         except:
-                            name_list.append(type(func).__name__.replace("_",""))
+                            name_list.append(
+                                type(func).__name__.replace("_", ""))
                     for j in range(len(gradient_critical_index)):
-                        plt.text(gradient_critical_index[j], vel_array[gradient_critical_index][j], name_list[j])
+                        plt.text(
+                            gradient_critical_index[j], vel_array[gradient_critical_index][j], name_list[j])
                 except Exception as err:
                     print(err)
                     pass

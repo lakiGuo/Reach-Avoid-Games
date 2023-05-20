@@ -8,6 +8,7 @@ import math
 
 from utils.utils import MaxFuncMux
 
+
 class ObstacleDistCost(Cost):
     def __init__(self, g_params, name=""):
         """
@@ -26,7 +27,7 @@ class ObstacleDistCost(Cost):
 
         for obs in g_params["obstacles"]:
             self._obs.append(Point(obs[0], obs[1]))
-        
+
         self._obs_radii = g_params["obstacle_radii"]
         self._collision_r = g_params["collision_r"]
         super(ObstacleDistCost, self).__init__(name)
@@ -34,7 +35,7 @@ class ObstacleDistCost(Cost):
     def g_single_obstacle_collision(self, x, k=0, obs_index=0):
         dx = x[self._x_index, 0] - self._obs[obs_index].x
         dy = x[self._y_index, 0] - self._obs[obs_index].y
-        if type(x) is torch.Tensor:            
+        if type(x) is torch.Tensor:
             relative_distance = torch.sqrt(dx*dx + dy*dy)
         else:
             relative_distance = math.sqrt(dx*dx + dy*dy)
@@ -66,7 +67,7 @@ class ObstacleDistCost(Cost):
         B = self._obs[obs_index].y - x[self._y_index, 0]
         C = A ** 2 + B ** 2
         return np.array([
-            A / C ** 0.5, 
+            A / C ** 0.5,
             B / C ** 0.5,
             0.0,
             0.0,
@@ -93,7 +94,8 @@ class ObstacleDistCost(Cost):
 
     def __call__(self, x, k=0):
         _max_func = MaxFuncMux()
-        _max_func.store(self.g_obstacle_collision, self.g_obstacle_collision(x))
+        _max_func.store(self.g_obstacle_collision,
+                        self.g_obstacle_collision(x))
         _func_of_max_val, _max_val = _max_func.get_max()
         return _max_val, _func_of_max_val
 

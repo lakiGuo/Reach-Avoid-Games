@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-cmd = "python3 run.py                                       \
+cmd = "python run.py                                       \
         --env_type t_intersection                           \
         --no_players 3                                      \
         --player_types car car ped                          \

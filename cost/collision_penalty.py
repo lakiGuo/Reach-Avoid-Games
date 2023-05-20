@@ -41,6 +41,11 @@ class CollisionPenalty(Cost):
         return 2.0 * self._collision_r - torch.sqrt((_car1_front[0] - _car2_front[0]) ** 2 + (_car1_front[1] - _car2_front[1]) ** 2)
       else:
         return 2.0 * self._collision_r - math.sqrt((_car1_front[0] - _car2_front[0]) ** 2 + (_car1_front[1] - _car2_front[1]) ** 2)
+      # if type(x) is torch.Tensor:
+      #   return 4.0*self._collision_r**2-((_car1_front[0] - _car2_front[0]) ** 2 + (_car1_front[1] - _car2_front[1]) ** 2)
+      # else:
+      #   return 4.0*self._collision_r**2-((_car1_front[0] - _car2_front[0]) ** 2 + (_car1_front[1] - _car2_front[1]) ** 2)
+
 
     def g_coll_fr(self, x, k = 0, **kwargs):
       _car1_rear, _car1_front = self.get_car_state(x, self._player_id)

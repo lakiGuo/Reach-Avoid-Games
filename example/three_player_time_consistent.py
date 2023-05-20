@@ -21,7 +21,7 @@ sample_run_1 = "python3 run.py                              \
         --plot --log --store_freq 1                         \
         ".format(np.pi/1.99, -np.pi/2.01)
 
-sample_run_2 = "python3 run.py                              \
+sample_run_233 = "python run.py                              \
         --env_type t_intersection                           \
         --no_players 3                                      \
         --player_types car car ped                          \
@@ -41,7 +41,7 @@ sample_run_2 = "python3 run.py                              \
         --plot --log --store_freq 1                         \
         ".format(np.pi/1.99, -np.pi/2.01)
 
-sample_run_2 = "python3 run.py                              \
+sample_run_233 = "python run.py                              \
         --env_type t_intersection                           \
         --no_players 3                                      \
         --player_types car car ped                          \
@@ -59,6 +59,7 @@ sample_run_2 = "python3 run.py                              \
         --hallucinated                                      \
         --cost_converge 0.8                                 \
         --plot --log --store_freq 1                         \
+        --max_steps 200 \
         ".format(np.pi/2 + np.pi/8, -np.pi/2.01)
 
 sample_run_3 = "python3 run.py                              \
@@ -83,4 +84,4 @@ sample_run_3 = "python3 run.py                              \
 
 # --draw_roads --draw_human --draw_cars
 
-os.system(sample_run_2)
+os.system(sample_run_233)
