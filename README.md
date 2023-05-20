@@ -21,13 +21,13 @@ python example/multiplayer_match.py
 
 Matching Policy: 
 
-![](.\gif\four_car_matching.gif)
+![](https://github.com/lakiGuo/Reach-Avoid-Games/tree/main/gif/four_car_matching.gif)
 
 
 
 Without matching policy:
 
-![](.\gif\four_cars_experiment2.gif)
+![](https://github.com/lakiGuo/Reach-Avoid-Games/tree/main/gif/four_cars_experiment2.gif)
 
 # Acknowledge
 
